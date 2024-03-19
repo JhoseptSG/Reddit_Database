@@ -2,6 +2,8 @@ import requests
 import sys
 # Getting the data from reddit using the API
 
+word = input("Enter the subreddit you want to get the data from: ")
+
 with open("CLIENT_ID.txt") as f:
     CLIENT_ID = f.read().strip()
 
@@ -22,26 +24,27 @@ TOKEN = res.json()['access_token']
 
 headers = {**headers, **{"Authorization" : f"bearer {TOKEN}"}}
 
-res = requests.get("https://oauth.reddit.com/r/gaming/hot", headers=headers) 
+res = requests.get(f"https://oauth.reddit.com/r/{word}/hot", headers=headers) 
 
 # Connecting to mongo database
+
 from pymongo import MongoClient
 
 with open("Mongo_url.txt") as f:
     MONGODB_URI = f.read().strip() 
+
 
 client = MongoClient(MONGODB_URI)
 
 # create a new database if not exist
 
 reddit_database = client['reddit_database']
-reddit_database.drop_collection('gaming')
 
-if "gaming" in reddit_database.list_collection_names():
+if word in reddit_database.list_collection_names():
     print("The collection was already created.")
     sys.exit()
 
-gaming = reddit_database["gaming"]
+collection = reddit_database[word]
 
 # Inserting the data into the database
 data = []
@@ -64,8 +67,7 @@ for post in res.json()["data"]["children"]:
 
     data.append(temp)
 
-result = gaming.insert_many(data)
-
+result = collection.insert_many(data)
 
 document_ids = result.inserted_ids
 
