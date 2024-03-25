@@ -40,6 +40,7 @@ if word not in reddit_database.list_collection_names():
 collection = reddit_database[word]
 
 Documents_to_update = collection.find({},{ "_id": 1, "id_reddit": 1})
+num_documents_to_update = collection.count_documents({})
 
 # updating the attributes of the documents
 for element in Documents_to_update:
@@ -56,7 +57,39 @@ for element in Documents_to_update:
 
 #adding new documents to the collection
 
+#getting the last document in the collection 
+last_doc = collection.find({},{"id_reddit" : 1}).sort("created", -1).limit(1)
+reddit_id_last_doc = last_doc[0]["id_reddit"]
+
+res = requests.get(f"https://oauth.reddit.com/r/{word}/hot", headers=headers, params= {"after": reddit_id_last_doc})
+
+data = []
+
+for post in res.json()["data"]["children"]:
+    temp = {
+    "subreddit": post["data"]["subreddit"],
+    "title": post["data"]["title"],
+    "upvote_ratio": post["data"]["upvote_ratio"],
+    "ups": post["data"]["ups"],
+    "downs": post["data"]["downs"],
+    "score": post["data"]["score"],
+    "num_comments": post["data"]["num_comments"],
+    "created": post["data"]["created"],
+    "id_reddit": post["kind"] + "_" + post["data"]["id"],
+    }
+    print("a")
+    if post["data"].get("selftext", "").strip():  # Check if selftext exists and is not empty after stripping whitespace
+        temp["selftext"] = post["data"]["selftext"]
+    data.append(temp)
+
+
+if data != [] : 
+    result = collection.insert_many(data)
+    document_ids = result.inserted_ids
+    print("Ids of inserted documents:\n" + "\n ObjectID: ".join(str(doc_id) for doc_id in document_ids))
+
+print("number of documents inserted: " + str(len(data)))
+
+print("number of documents updated: " + str(num_documents_to_update))
+
 print("The collection was updated successfully.")
-
-
-##
